@@ -1,0 +1,20 @@
+# Optional override: Penny Knowledge read-only MCP bridge
+# Usage:
+#   docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.penny-knowledge.yml up -d --no-build api worker
+services:
+  api:
+    environment:
+      MCP_STDIO_ENABLED: "true"
+      MCP_STDIO_ALLOWED_COMMANDS: "/usr/local/bin/node"
+      PENNY_VAULT_ROOT: "/penny-vault"
+    volumes:
+      - ${PENNY_VAULT_HOST_PATH}:/penny-vault:ro
+      - ../../tools/penny-knowledge-mcp:/app/tools/penny-knowledge-mcp:ro
+  worker:
+    environment:
+      MCP_STDIO_ENABLED: "true"
+      MCP_STDIO_ALLOWED_COMMANDS: "/usr/local/bin/node"
+      PENNY_VAULT_ROOT: "/penny-vault"
+    volumes:
+      - ${PENNY_VAULT_HOST_PATH}:/penny-vault:ro
+      - ../../tools/penny-knowledge-mcp:/app/tools/penny-knowledge-mcp:ro

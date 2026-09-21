@@ -1,0 +1,10 @@
+{
+  "name": "@rakazo/penny-knowledge-mcp",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Read-only Penny Knowledge Vault MCP adapter for Rakazo stdio MCP",
+  "bin": {
+    "penny-knowledge-mcp": "./src/index.mjs"
+  }
+}
