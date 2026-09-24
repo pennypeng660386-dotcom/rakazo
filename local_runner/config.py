@@ -26,3 +26,9 @@ ACTION_ARGUMENT_KEYS = {
     "search_text": frozenset({"query", "path"}),
     "run_existing_test": frozenset({"test_file"}),
 }
+# Exact workspace-relative paths. Filename patterns are not permission.
+ALLOWED_TEST_FILES = frozenset(
+    {
+        "local_runner/test_security.py",
+    }
+)

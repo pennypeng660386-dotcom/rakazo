@@ -76,6 +76,45 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(outcome["status"], "PASS")
         self.assertEqual(outcome["exit_code"], 0)
 
+    def test_listed_test_runs_and_unlisted_test_is_rejected(self):
+        listed = self.workspace / "local_runner" / "test_security.py"
+        listed.parent.mkdir()
+        listed.write_text(
+            "import unittest\n\n"
+            "class Listed(unittest.TestCase):\n"
+            "    def test_ok(self):\n"
+            "        self.assertTrue(True)\n",
+            encoding="utf-8",
+        )
+        unlisted = self.workspace / "local_runner" / "test_not_listed.py"
+        unlisted.write_text(listed.read_text(encoding="utf-8"), encoding="utf-8")
+        allowed = actions.execute_action(
+            self.task("run_existing_test", {"test_file": "local_runner/test_security.py"}),
+            self.allowed,
+        )
+        self.assertEqual(allowed["status"], "PASS")
+        self.assertEqual(allowed["exit_code"], 0)
+        calls = []
+        original = subprocess.run
+
+        def fail_if_called(*args, **kwargs):
+            calls.append(args)
+            raise AssertionError("unlisted test was executed")
+
+        subprocess.run = fail_if_called
+        actions.subprocess.run = fail_if_called
+        try:
+            blocked = actions.execute_action(
+                self.task("run_existing_test", {"test_file": "local_runner/test_not_listed.py"}),
+                self.allowed,
+            )
+        finally:
+            subprocess.run = original
+            actions.subprocess.run = original
+        self.assertEqual(blocked["status"], "BLOCKED")
+        self.assertEqual(blocked["reason"], "TEST_NOT_ALLOWLISTED")
+        self.assertEqual(calls, [])
+
     def test_duplicate_task_does_not_execute_again(self):
         repo = self.root / "repo"
         task_id = "task-1"

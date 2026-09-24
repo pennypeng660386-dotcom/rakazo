@@ -9,6 +9,7 @@ from config import (
     ACTION_ARGUMENT_KEYS,
     ALLOWED_ACTIONS,
     ALLOWED_ROOT,
+    ALLOWED_TEST_FILES,
     MAX_OUTPUT_CHARS,
     MAX_READ_BYTES,
     RESULT_VERSION,
@@ -268,7 +269,22 @@ def _search_text(task, workspace: Path, arguments: dict, started: str):
     return result(task, "PASS", started, 0, stdout="\n".join(matches))
 
 
+def listed_test_key(relative) -> str | None:
+    if not isinstance(relative, str) or relative.strip() == "":
+        return None
+    raw = Path(relative)
+    if raw.is_absolute() or ".." in raw.parts:
+        return None
+    parts = [part for part in raw.parts if part not in {"", "."}]
+    if not parts:
+        return None
+    return "/".join(parts)
+
+
 def _run_existing_test(task, workspace: Path, arguments: dict, started: str):
+    key = listed_test_key(arguments.get("test_file"))
+    if key not in ALLOWED_TEST_FILES:
+        return blocked(task, started, "TEST_NOT_ALLOWLISTED")
     target, error = resolve_relative(workspace, arguments.get("test_file"), "TEST_FILE_NOT_FOUND")
     if error:
         status = "BLOCKED" if error in {"PATH_OUTSIDE_ALLOWED_ROOT", "SECRET_PATH_BLOCKED"} else "FAIL"
