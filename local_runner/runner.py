@@ -13,11 +13,23 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 TASK_ID_OK = __import__("re").compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 
 
-def log_line(repo_root: Path, task_id: str, action: str, workspace: str, status: str) -> None:
+def log_line(
+    repo_root: Path,
+    task_id: str,
+    action: str,
+    workspace: str,
+    status: str,
+    started: str = "",
+    finished: str = "",
+) -> None:
     path = repo_root / "logs" / "local_runner.log"
     path.parent.mkdir(parents=True, exist_ok=True)
-    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    line = f"{stamp} task_id={task_id} action={action} workspace={workspace} status={status}\n"
+    finished = finished or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    started = started or finished
+    line = (
+        f"{finished} task_id={task_id} action={action} workspace={workspace} "
+        f"started={started} finished={finished} status={status}\n"
+    )
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line)
 
@@ -91,7 +103,15 @@ def dispatch_file(repo_root: Path, task_path: Path, allowed_root: Path = ALLOWED
         claimed.unlink(missing_ok=True)
     else:
         os.replace(claimed, failed_dir / f"{task_id}.json")
-    log_line(repo_root, task_id, action, workspace, status)
+    log_line(
+        repo_root,
+        task_id,
+        action,
+        workspace,
+        status,
+        str(outcome.get("started_at", "")),
+        str(outcome.get("finished_at", "")),
+    )
     return status
 
 
@@ -102,8 +122,17 @@ def pull_branch(repo_root: Path) -> bool:
     name = branch.stdout.strip()
     if not name or name == "HEAD":
         return False
-    pulled = git(repo_root, ["pull", "--ff-only", "--no-edit", "origin", name])
-    return pulled.returncode == 0
+    for attempt in range(2):
+        pulled = git(repo_root, ["pull", "--ff-only", "--no-edit", "origin", name])
+        if pulled.returncode == 0:
+            return True
+        message = f"{pulled.stderr or ''} {pulled.stdout or ''}".lower()
+        transient = any(token in message for token in ("reset", "timed out", "unable to access", "connection"))
+        if attempt == 0 and transient:
+            time.sleep(2)
+            continue
+        return False
+    return False
 
 
 def commit_runtime_tasks(repo_root: Path) -> bool:
