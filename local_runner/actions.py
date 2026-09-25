@@ -112,6 +112,7 @@ def run_argv(argv, cwd: Path, timeout: int):
         encoding="utf-8",
         errors="replace",
         shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=timeout,
     )
     return completed.returncode, completed.stdout, completed.stderr
