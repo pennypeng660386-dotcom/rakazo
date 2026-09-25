@@ -45,6 +45,7 @@ def git(repo_root: Path, args: list[str], timeout: int = 120):
         encoding="utf-8",
         errors="replace",
         shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=timeout,
         env=env,
     )
